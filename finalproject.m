@@ -1,55 +1,45 @@
-% Read the input image
-inputImage = imread('input_image.jpeg');
-figure;
-imshow(inputImage);
-title('Original Image');
+clc; 
+clear all;
 
-% Convert the image to grayscale
-grayImage = rgb2gray(inputImage);
+% Load an example image
+originalImage = imread('input_image.jpeg'); % Replace 'input_image.jpeg' with your image path
+originalImageInGray = rgb2gray(originalImage);
+originalDimensions = size(originalImageInGray);
 
-% Get the dimensions of the image
-[rows, cols] = size(grayImage);
+% Configuring resized image dimensions
+modValue = 100;
+sizeOfBrokenImage = modValue;
+remainderOfMod = mod(min(originalDimensions), modValue);
+newRowSize = min(originalDimensions) - remainderOfMod;
+newColSize = newRowSize;
+resizedDimensions = [newRowSize, newColSize];   
+resizedImage = imresize(originalImageInGray, resizedDimensions, 'nearest'); % You can change the interpolation method here
+sqrtOfNumberOfImagesToBeBrokenInto = newRowSize / sizeOfBrokenImage;
+totalNumberOfPieces = sqrtOfNumberOfImagesToBeBrokenInto ^ 2;
+newRowSizePerPiece = newRowSize / sqrtOfNumberOfImagesToBeBrokenInto;
+newColSizePerPiece = newColSize / sqrtOfNumberOfImagesToBeBrokenInto;
 
-% Setup for 2x2 pieces
-N = 4; % Number of pieces
-pieceSize = sqrt(N);
+jigsawHolderUnshuffled = zeros(newRowSizePerPiece, newColSizePerPiece, totalNumberOfPieces); % dimensions, sequentialIndex
+jigsawHolderShuffled = zeros(newRowSizePerPiece, newColSizePerPiece, totalNumberOfPieces); % dimensions, scrambledIndex
+jigsawHolderRecovered = zeros(newRowSizePerPiece, newColSizePerPiece, totalNumberOfPieces); % dimensions, scrambledIndex
 
-% Calculate the size of each piece
-pieceRows = rows / pieceSize;
-pieceCols = cols / pieceSize;
+% Sequential indices
+sequentialIndex = 1:totalNumberOfPieces;
 
-% Initialize the shuffled image
-shuffledImage = zeros(rows, cols, 'uint8');
+% Shuffle
+shuffledIndex = randperm(totalNumberOfPieces);  % where the current sub-image is placed
+shuffledLookUp = ones(1, totalNumberOfPieces);
 
-% Generate a random permutation of 4 elements
-perm = randperm(N);
+% Shuffle image
+[jigsawHolderUnshuffled, jigsawHolderShuffled, shuffledLookUp] = shuffleImages(resizedImage, newRowSizePerPiece, newColSizePerPiece, totalNumberOfPieces, sqrtOfNumberOfImagesToBeBrokenInto, sizeOfBrokenImage, shuffledIndex, shuffledLookUp);
 
-% Shuffling the image into 4 pieces in a 2x2 grid
-figure;
-for i = 1:pieceSize
-    for j = 1:pieceSize
-        row = floor((perm((i-1)*pieceSize+j)-1) / pieceSize) + 1;
-        col = mod((perm((i-1)*pieceSize+j)-1), pieceSize) + 1;
-        piece = grayImage((row-1)*pieceRows+1:row*pieceRows, (col-1)*pieceCols+1:col*pieceCols);
-        shuffledImage((i-1)*pieceRows+1:i*pieceRows, (j-1)*pieceCols+1:j*pieceCols) = piece;
-        subplot(pieceSize, pieceSize, (i-1)*pieceSize+j);
-        imshow(shuffledImage);
-        title(['Shuffled Image: Step ', num2str((i-1)*pieceSize+j)]);
-    end
+% Display the shuffled images without spaces
+figure('Name', 'Shuffled broken Images', 'NumberTitle', 'off');
+for i = 1:totalNumberOfPieces
+    subplot(sqrtOfNumberOfImagesToBeBrokenInto, sqrtOfNumberOfImagesToBeBrokenInto, i);
+    imshow(jigsawHolderShuffled(:, :, i), 'Border', 'tight');
+    title(num2str(shuffledLookUp(i)));
 end
 
-% Unshuffling the image
-unshuffledImage = zeros(rows, cols, 'uint8');
-
-figure;
-for i = 1:pieceSize
-    for j = 1:pieceSize
-        row = floor((perm((i-1)*pieceSize+j)-1) / pieceSize) + 1;
-        col = mod((perm((i-1)*pieceSize+j)-1), pieceSize) + 1;
-        piece = shuffledImage((i-1)*pieceRows+1:i*pieceRows, (j-1)*pieceCols+1:j*pieceCols);
-        unshuffledImage((row-1)*pieceRows+1:row*pieceRows, (col-1)*pieceCols+1:col*pieceCols) = piece;
-        subplot(pieceSize, pieceSize, (i-1)*pieceSize+j);
-        imshow(unshuffledImage);
-        title(['Unshuffled Image: Step ', num2str((i-1)*pieceSize+j)]);
-    end
-end
+% Unshuffling
+jigsawHolderRecovered = unshuffleImages(jigsawHolderShuffled, jigsawHolderRecovered, shuffledIndex, shuffledLookUp, totalNumberOfPieces, sqrtOfNumberOfImagesToBeBrokenInto);
