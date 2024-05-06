@@ -1,55 +1,83 @@
-% Read the input image
-inputImage = imread('input_image.jpeg');
-figure;
-imshow(inputImage);
-title('Original Image');
+% Read in the input image
+input_image = imread('input_image.jpeg');
 
-% Convert the image to grayscale
-grayImage = rgb2gray(inputImage);
+% Get the dimensions of the input image
+[height, width, ~] = size(input_image);
 
-% Get the dimensions of the image
-[rows, cols] = size(grayImage);
-
-% Setup for 2x2 pieces
-N = 4; % Number of pieces
-pieceSize = sqrt(N);
-
-% Calculate the size of each piece
-pieceRows = rows / pieceSize;
-pieceCols = cols / pieceSize;
+% Determine the size of each piece
+piece_height = floor(height / 2);
+piece_width = floor(width / 2);
 
 % Initialize the shuffled image
-shuffledImage = zeros(rows, cols, 'uint8');
+shuffled_image = uint8(zeros(height, width, 3));
 
-% Generate a random permutation of 4 elements
-perm = randperm(N);
+% Cut the input image into 4 pieces and shuffle them
+pieces = cell(1, 4);
+idx = 1;
+for i = 1:2
+    for j = 1:2
+        pieces{idx} = input_image((i-1)*piece_height+1:i*piece_height, (j-1)*piece_width+1:j*piece_width, :);
+        idx = idx + 1;
+    end
+end
+shuffled_pieces = pieces(randperm(4));
 
-% Shuffling the image into 4 pieces in a 2x2 grid
-figure;
-for i = 1:pieceSize
-    for j = 1:pieceSize
-        row = floor((perm((i-1)*pieceSize+j)-1) / pieceSize) + 1;
-        col = mod((perm((i-1)*pieceSize+j)-1), pieceSize) + 1;
-        piece = grayImage((row-1)*pieceRows+1:row*pieceRows, (col-1)*pieceCols+1:col*pieceCols);
-        shuffledImage((i-1)*pieceRows+1:i*pieceRows, (j-1)*pieceCols+1:j*pieceCols) = piece;
-        subplot(pieceSize, pieceSize, (i-1)*pieceSize+j);
-        imshow(shuffledImage);
-        title(['Shuffled Image: Step ', num2str((i-1)*pieceSize+j)]);
+% Place the shuffled pieces into a 2x2 grid
+idx = 1;
+for i = 1:2
+    for j = 1:2
+        shuffled_image((i-1)*piece_height+1:i*piece_height, (j-1)*piece_width+1:j*piece_width, :) = shuffled_pieces{idx};
+        idx = idx + 1;
     end
 end
 
-% Unshuffling the image
-unshuffledImage = zeros(rows, cols, 'uint8');
-
+% Display the original, shuffled, and unshuffled images
 figure;
-for i = 1:pieceSize
-    for j = 1:pieceSize
-        row = floor((perm((i-1)*pieceSize+j)-1) / pieceSize) + 1;
-        col = mod((perm((i-1)*pieceSize+j)-1), pieceSize) + 1;
-        piece = shuffledImage((i-1)*pieceRows+1:i*pieceRows, (j-1)*pieceCols+1:j*pieceCols);
-        unshuffledImage((row-1)*pieceRows+1:row*pieceRows, (col-1)*pieceCols+1:col*pieceCols) = piece;
-        subplot(pieceSize, pieceSize, (i-1)*pieceSize+j);
-        imshow(unshuffledImage);
-        title(['Unshuffled Image: Step ', num2str((i-1)*pieceSize+j)]);
+
+subplot(1, 3, 1);
+imshow(input_image);
+title('Original Image');
+
+subplot(1, 3, 2);
+imshow(shuffled_image);
+title('Shuffled Image');
+
+% Algorithm to unshuffle the image without knowing the locations
+original_image = input_image;
+unshuffled_image = shuffled_image;
+iteration = 0;
+while ~isequal(unshuffled_image, original_image)
+    % Randomly permute the indices of the pieces
+    shuffled_indices = randperm(4);
+
+    % Place the shuffled pieces into a 2x2 grid using the shuffled indices
+    idx = 1;
+    for i = 1:2
+        for j = 1:2
+            unshuffled_image((i-1)*piece_height+1:i*piece_height, (j-1)*piece_width+1:j*piece_width, :) = shuffled_pieces{shuffled_indices(idx)};
+            idx = idx + 1;
+        end
+    end
+
+    % Display the unshuffled image
+    subplot(1, 3, 3);
+    imshow(unshuffled_image);
+    title('Unshuffled Image');
+
+ 
+
+    % Pause for a moment to visualize the unshuffling process
+    pause(1);
+    
+    % Increment iteration count
+    iteration = iteration + 1;
+    
+    % Break out of the loop 
+    if isequal(unshuffled_image, original_image)
+        disp('Unshuffling process completed.');
+        break;
+    elseif iteration > 30
+        disp('Max iter');
+        break;
     end
 end
